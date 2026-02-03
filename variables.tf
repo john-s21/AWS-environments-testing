@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Dev & Deploy Auth Vars
+// Dev & Deploy Auth Var
 variable "aws_credential_file" {
   type    = string
   default = "~/.aws/credentials"
