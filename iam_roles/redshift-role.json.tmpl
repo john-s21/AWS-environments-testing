@@ -1,0 +1,24 @@
+{
+    "assume_role_policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "redshift.amazonaws.com"
+                }
+            }
+        ]
+    },
+    "attach_policies": [
+        "secretsmanager-policy",
+        "sns-policy"
+    ],
+    "attach_managed_policies": [
+        "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess",
+        "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess",
+        "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ],
+    "permission_boundary": "projectey-pb-internal"
+}
