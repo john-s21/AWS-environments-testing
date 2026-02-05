@@ -22,12 +22,12 @@ resource "aws_iam_role" "this" {
 resource "aws_iam_role_policy_attachment" "custom_policies" {
   for_each   = toset(var.custom_policy_arns)
   role       = aws_iam_role.this.name
-  policy_arn = each.value
+  policy_arn = var.custom_policy_arns[count.index]
 }
 
 # Attachment 2: Managed Policies (Like ReadOnlyAccess)
 resource "aws_iam_role_policy_attachment" "managed_policies" {
   for_each   = toset(var.managed_policy_arns)
   role       = aws_iam_role.this.name
-  policy_arn = each.value
+  policy_arn = var.managed_policy_arns[count.index]
 }
