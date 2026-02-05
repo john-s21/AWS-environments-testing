@@ -20,7 +20,7 @@ pipeline {
 	stage('Terraform Check') {
             steps {
                 echo "Validating terraform code: ${params.ENVIRONMENT}"
-                sh "terraform validate -var-file=tfvars/${params.ENVIRONMENT}.tfvars"
+                sh "terraform validate"
             }
         }
 
