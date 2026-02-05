@@ -16,8 +16,16 @@ pipeline {
                 sh "terraform init -backend-config=backend/${params.ENVIRONMENT}.conf -reconfigure"
             }
         }
+	//3. Terraform Validation
+	stage('Terraform Check') {
+            steps {
+                echo "Validating terraform code: ${params.ENVIRONMENT}"
+                sh "terraform validate -var-file=tfvars/${params.ENVIRONMENT}.tfvars"
+            }
+        }
 
-        // 3. Show the Plan
+
+        // 4. Show the Plan
         stage('Terraform Plan') {
             steps {
                 echo "Planning changes for: ${params.ENVIRONMENT}"
@@ -25,7 +33,7 @@ pipeline {
             }
         }
 
-        // 4. Apply (Build) or Destroy (Delete)
+        // 5. Apply (Build) or Destroy (Delete)
         stage('Terraform Action') {
             steps {
                 script {
