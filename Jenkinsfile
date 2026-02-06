@@ -49,5 +49,20 @@ pipeline {
                 }
             }
         }
+	stage('Verify Buckets') {
+            steps {
+                script {
+                    // Only run this verification if we just applied (built) something
+                    if (params.ACTION == 'apply') {
+                        echo "Verifying S3 Buckets in AWS..."
+                        
+                        // List all buckets and highlight the one we just made
+                        // We use 'grep' to filter the list for 'dev', 'sit' or 'prod'
+                        sh "aws s3 ls | grep ${params.ENVIRONMENT} || true"
+                        
+                        echo "If you see the bucket name above, the deployment was a success!"
+                 }
+             }
+         }
     }
 }
