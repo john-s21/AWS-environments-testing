@@ -45,27 +45,23 @@ pipeline {
             steps {
                 script {
                     if (params.ACTION == 'destroy') {
-                        // 1. Run Terraform and CAPTURE the output (returnStdout: true)
-                        // We use .trim() to clean up whitespace
+                        // DESTROY LOGIC
                         def destroyLog = sh(
                             script: "terraform destroy -var-file=${TFVARS_FILE} -auto-approve", 
                             returnStdout: true
                         ).trim()
 
-                        // 2. Print the log to the console so you can still see the details
                         echo destroyLog
 
-                        // 3. Analyze the text to decide what to print
                         if (destroyLog.contains("Resources: 0 destroyed")) {
-                            echo "⚠️ Info: No resources needed to be destroyed (Bucket didn't exist)."
+                            echo "⚠️ Info: No resources needed to be destroyed."
                         } else {
-                            // Only prints if something was actually deleted
                             echo "🗑️ SUCCESS: The bucket ${params.ENVIRONMENT} was destroyed!"
                         }
                     } 
                     else if (params.ACTION == 'apply') {
-                        // Standard apply logic
-                        sh "terraform apply -auto-approve tfplan"
+                        // APPLY LOGIC (Fixed)
+                        sh "terraform apply -var-file=${TFVARS_FILE} -auto-approve"
                         echo "✅ Deployment Successful!"
                     }
                 }
