@@ -38,18 +38,35 @@ pipeline {
             }
         }
 	
-        stage('Terraform Action') {
+        stage('Terraform Apply/Destroy') {
+            when {
+                not { expression { params.ACTION == 'plan' } }
+            }
             steps {
                 script {
-                    if (params.ACTION == 'apply') {
-                        sh "terraform apply -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve"
-			echo "Verifying S3 Buckets in AWS..."
-                        sh "aws s3 ls | grep ${params.ENVIRONMENT} || true"
-			echo "If you see the bucket name above, the deployment was a success!"
+                    if (params.ACTION == 'destroy') {
+                        // 1. Run Terraform and CAPTURE the output (returnStdout: true)
+                        // We use .trim() to clean up whitespace
+                        def destroyLog = sh(
+                            script: "terraform destroy -var-file=${TFVARS_FILE} -auto-approve", 
+                            returnStdout: true
+                        ).trim()
+
+                        // 2. Print the log to the console so you can still see the details
+                        echo destroyLog
+
+                        // 3. Analyze the text to decide what to print
+                        if (destroyLog.contains("Resources: 0 destroyed")) {
+                            echo "⚠️ Info: No resources needed to be destroyed (Bucket didn't exist)."
+                        } else {
+                            // Only prints if something was actually deleted
+                            echo "🗑️ SUCCESS: The bucket ${params.ENVIRONMENT} was destroyed!"
+                        }
                     } 
-                    else if (params.ACTION == 'destroy') { 
-                        sh "terraform destroy -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve"
-			echo "The bucket name ${params.ENVIRONMENT} was destroyed!"
+                    else if (params.ACTION == 'apply') {
+                        // Standard apply logic
+                        sh "terraform apply -auto-approve tfplan"
+                        echo "✅ Deployment Successful!"
                     }
                 }
             }
