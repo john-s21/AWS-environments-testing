@@ -27,64 +27,87 @@ pipeline {
         }
 
 	stage('Production Approval') {
-    // 1. Only run for Prod + Apply/Destroy
-    when {
-        allOf {
-            expression { params.ENVIRONMENT == 'prod' }
-            not { expression { params.ACTION == 'plan' } }
-        }
-    }
-    steps {
-        script {
-            try {
-                def userInput = input(
-                    id: 'ProdDeployGate', 
-                    message: "🚨 PROD DEPLOYMENT GATE", 
-                    ok: "Submit Decision", // We rename the button from 'Proceed' to 'Submit Decision'
-                    parameters: [
-                        choice(name: 'DECISION', 
-                               choices: ['Approve Deployment', 'Abort Build'], 
-                               description: 'Do you want to proceed with the changes?'),
-                        string(name: 'REASON', 
-                               defaultValue: '', 
-                               description: 'Reason for aborting (Required if Abort is selected)')
-                    ]
-                )
-
-                // 3. Process the Input
-                // The 'userInput' variable now holds a map: [DECISION: '...', REASON: '...']
-                
-                if (userInput['DECISION'] == 'Abort Build') {
-                    // check if they actually typed a reason
-                    def stopReason = userInput['REASON'].trim()
-                    
-                    if (stopReason == "") {
-                        stopReason = "No reason provided."
-                    }
-                    
-                    // Log it nicely
-                    echo "⛔ Build explicitly aborted by user."
-                    echo "📝 Reason: ${stopReason}"
-                    
-                    // Mark build as Aborted (Gray) or Failed (Red) based on your preference
-                    currentBuild.result = 'ABORTED' 
-                    currentBuild.description = "Aborted: ${stopReason}"
-                    
-                    // Stop the pipeline here
-                    error("Build stopped by user: ${stopReason}")
-                } else {
-                    echo "✅ User approved deployment. Proceeding..."
+            when {
+                allOf {
+                    expression { params.ENVIRONMENT == 'prod' }
+                    not { expression { params.ACTION == 'plan' } }
                 }
+            }
+            steps {
+                script {
+                    // 1. Get the User ID safely (Requires 'Build User Vars' plugin, or falls back to 'Jenkins User')
+                    def currentUser = "Jenkins User"
+                    try {
+                        wrap([$class: 'BuildUser']) {
+                            currentUser = env.BUILD_USER_ID
+                        }
+                    } catch (Exception e) {
+                        // Plugin not installed or triggered by timer; ignore
+                    }
 
-            } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-                // This catches if they click the tiny red 'Abort' link instead of using our form
-                echo "User clicked the system Abort link (no reason captured)."
-                currentBuild.result = 'ABORTED'
-                error("System Abort triggered")
+                    // 2. The Input Form
+                    // We catch the "System Abort" (the gray button) just in case, but we encourage using the Form.
+                    try {
+                        def userInput = input(
+                            id: 'ProdDeployGate', 
+                            message: "🚀 PROD DEPLOYMENT GATE", 
+                            ok: "Confirm Decision", // This button submits the form (Approve OR Abort)
+                            parameters: [
+                                // requirement 5: Show the user
+                                string(name: 'DISPLAY_USER', 
+                                       defaultValue: currentUser, 
+                                       description: 'User authorizing this action (Read Only)', 
+                                       trim: true),
+                                
+                                // requirement 1 & 2: No Dropdown. Use Checkbox for "Abort" logic.
+                                booleanParam(name: 'ABORT_BUILD', 
+                                             defaultValue: false, 
+                                             description: '🔴 Check this box if you want to ABORT/REJECT the build.'),
+                                
+                                // requirement 3: Reason Text Box
+                                string(name: 'REASON', 
+                                       defaultValue: '', 
+                                       description: 'Reason for decision (MANDATORY if Abort is checked)', 
+                                       trim: true)
+                            ]
+                        )
+
+                        // 3. Validation Logic
+                        
+                        // Scenario: User checked "Abort"
+                        if (userInput['ABORT_BUILD'] == true) {
+                            def reason = userInput['REASON']
+                            
+                            // Check if reason is empty or just spaces
+                            if (reason == null || reason.trim() == "") {
+                                error("❌ You checked 'Abort' but did not provide a reason! Restart the build and try again.")
+                            }
+                            
+                            // Valid reason provided -> Abort Gracefully
+                            echo "⛔ Build explicitly aborted by ${userInput['DISPLAY_USER']}."
+                            echo "📝 Reason: ${reason}"
+                            currentBuild.result = 'ABORTED'
+                            error("Aborted by user: ${reason}")
+                        }
+                        
+                        // Scenario: User did NOT check "Abort" (Approval)
+                        // Requirement 4: "if I don't give the reason but hit Apply... build should move on"
+                        else {
+                            echo "✅ Deployment Approved by ${userInput['DISPLAY_USER']}."
+                            if (userInput['REASON']?.trim()) {
+                                echo "📝 Note: ${userInput['REASON']}"
+                            }
+                        }
+
+                    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                        // This handles the case if they click the tiny gray 'Abort' button
+                        echo "⚠️ User clicked the system Abort button. No reason could be captured."
+                        currentBuild.result = 'ABORTED'
+                        error("System Abort triggered")
+                    }
+                }
             }
         }
-    }
-}
 	
         stage('Terraform Action') {
             steps {
