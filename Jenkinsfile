@@ -30,24 +30,17 @@ pipeline {
                 script {
                     if (params.ACTION == 'apply') {
                         sh "terraform apply -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve"
+			echo "Verifying S3 Buckets in AWS..."
+                        sh "aws s3 ls | grep ${params.ENVIRONMENT} || true"
+			echo "If you see the bucket name above, the deployment was a success!"
                     } 
                     else if (params.ACTION == 'destroy') { 
                         sh "terraform destroy -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve"
+			echo "The bucket name ${params.ENVIRONMENT} was destroyed!"
                     }
                 }
             }
         }
-	stage('Verify Buckets') {
-            steps {
-                script {
-                    if (params.ACTION == 'apply') {
-                        echo "Verifying S3 Buckets in AWS..."
-                        sh "aws s3 ls | grep ${params.ENVIRONMENT} || true"
-                        
-                        echo "If you see the bucket name above, the deployment was a success!"
-                 }
-             }
-         }
-      }
-   }
+	
+    }
 }

@@ -1,6 +1,3 @@
-# -----------------------------------------------------------
-# 1. PROVIDER SETUP
-# -----------------------------------------------------------
 provider "aws" {
   region = var.aws_region
   
@@ -9,20 +6,12 @@ provider "aws" {
   }
 }
 
-# -----------------------------------------------------------
-# 2. REMOTE STATE
-# -----------------------------------------------------------
 terraform {
-  backend "s3" {
-    # Configuration comes from backend/*.conf
-  }
+  backend "s3" {}
 }
 
-# -----------------------------------------------------------
-# 3. ENVIRONMENT STORAGE (The Data Lake)
-# -----------------------------------------------------------
 resource "aws_s3_bucket" "data_lake" {
-  bucket = "${var.project_prefix}-abc-data-${var.environment}"
+  bucket = "${var.project_prefix}-data-${var.environment}"
   
   tags = {
     Name        = "Data Lake Storage"
@@ -30,7 +19,6 @@ resource "aws_s3_bucket" "data_lake" {
   }
 }
 
-# Block public access (Security Best Practice)
 resource "aws_s3_bucket_public_access_block" "block_public" {
   bucket = aws_s3_bucket.data_lake.id
 

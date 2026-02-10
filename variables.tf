@@ -10,7 +10,7 @@ variable "aws_account_number" {
 }
 
 variable "project_prefix" {
-  description = "Testproject"
+  description = "MultiEnvironment"
   type        = string
 }
 
