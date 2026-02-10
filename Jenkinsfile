@@ -36,66 +36,71 @@ pipeline {
             steps {
                 script {
                     def userDecision = null
-                    def promptMessage = "🚀 PROD DEPLOYMENT GATE" // Initial message
+                    def promptMessage = "🚀 PROD DEPLOYMENT GATE" 
                     
-                    // 1. Get User ID (Safe fallback if plugin is missing)
+                    // 1. Get User ID
                     def currentUser = "Unknown"
                     try {
                         wrap([$class: 'BuildUser']) { currentUser = env.BUILD_USER_ID }
                     } catch (Exception e) { currentUser = "System" }
 
-                    // 2. The Validation Loop
-                    // This creates the "Pause as long as needed" behavior
-                    waitUntil {
-                        def userInput = input(
-                            id: 'ProdDeployGate', 
-                            message: promptMessage, 
-                            ok: "Confirm Decision", // The ONLY button you need to click
-                            parameters: [
-                                string(name: 'DISPLAY_USER', 
-                                       defaultValue: currentUser, 
-                                       description: 'User authorizing this action (Read Only)', 
-                                       trim: true),
-                                
-                                booleanParam(name: 'ABORT_BUILD', 
-                                             defaultValue: false, 
-                                             description: '🔴 Check this box to ABORT/STOP the build.'),
-                                
-                                string(name: 'REASON', 
-                                       defaultValue: '', 
-                                       description: 'Reason for decision (REQUIRED if Abort is checked)', 
-                                       trim: true)
-                            ]
-                        )
+                    try {
+                        // 2. The Validation Loop (Forces the BLUE button logic)
+                        waitUntil {
+                            def userInput = input(
+                                id: 'ProdDeployGate', 
+                                message: promptMessage, 
+                                ok: "Confirm Decision", // The Blue Button
+                                parameters: [
+                                    string(name: 'DISPLAY_USER', 
+                                           defaultValue: currentUser, 
+                                           description: 'User authorizing this action (Read Only)', 
+                                           trim: true),
+                                    
+                                    booleanParam(name: 'ABORT_BUILD', 
+                                                 defaultValue: false, 
+                                                 description: '🔴 Check this box to ABORT/STOP the build.'),
+                                    
+                                    string(name: 'REASON', 
+                                           defaultValue: '', 
+                                           description: 'Reason for decision (REQUIRED if Abort is checked)', 
+                                           trim: true)
+                                ]
+                            )
 
-                        // 3. Logic: Check the inputs
-                        if (userInput['ABORT_BUILD'] == true) {
-                            // Case: User wants to Abort
-                            if (!userInput['REASON']?.trim()) {
-                                // ERROR: No reason provided.
-                                // We update the message and return 'false' to RE-OPEN the prompt immediately.
-                                promptMessage = "⚠️ STOP! You checked 'ABORT' but gave no reason.\nPlease enter a reason and click Confirm again."
-                                return false 
+                            // 3. Check Logic
+                            if (userInput['ABORT_BUILD'] == true) {
+                                if (!userInput['REASON']?.trim()) {
+                                    // REJECT: Re-open the prompt
+                                    promptMessage = "⚠️ STOP! You checked 'ABORT' but gave no reason.\nPlease enter a reason and click Confirm again."
+                                    return false 
+                                } else {
+                                    // VALID ABORT: Exit loop
+                                    userDecision = userInput
+                                    return true 
+                                }
                             } else {
-                                // VALID: Reason provided. Exit loop.
+                                // VALID DEPLOY: Exit loop
                                 userDecision = userInput
                                 return true 
                             }
-                        } else {
-                            // Case: User wants to Deploy (Checkbox empty)
-                            // We don't need a reason. Exit loop.
-                            userDecision = userInput
-                            return true 
                         }
-                    }
 
-                    // 4. Execution (Happens only after valid input)
-                    if (userDecision['ABORT_BUILD'] == true) {
-                        echo "⛔ Build explicitly aborted by ${userDecision['DISPLAY_USER']}."
+                        // 4. Execution (Only happens if Blue button was used correctly)
+                        if (userDecision['ABORT_BUILD'] == true) {
+                            echo "⛔ Build explicitly aborted by ${userDecision['DISPLAY_USER']}."
+                            currentBuild.result = 'ABORTED'
+                            error("Aborted by user: ${userDecision['REASON']}")
+                        } else {
+                            echo "✅ Deployment Approved by ${userDecision['DISPLAY_USER']}."
+                        }
+
+                    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                        // 5. Catch the GRAY BUTTON click
+                        echo "⚠️ WARNING: User clicked the System Abort button (Gray Button)."
+                        echo "⚠️ No reason was captured because the user bypassed the form."
                         currentBuild.result = 'ABORTED'
-                        error("Aborted by user: ${userDecision['REASON']}")
-                    } else {
-                        echo "✅ Deployment Approved by ${userDecision['DISPLAY_USER']}."
+                        // We swallow the error so the pipeline ends cleanly, but logged as 'System Abort'
                     }
                 }
             }
