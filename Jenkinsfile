@@ -34,24 +34,7 @@ pipeline {
                 }
             }
             steps {
-                script {             
-                    def userSelection = input(
-                        message: "Confirm the action?", 
-                        ok: "Confirm",
-                        parameters: [
-                            choice(name: 'DECISION', 
-                                   choices: ['Apply', 'Abort'], 
-                                   description: 'Select Apply to proceed or Abort to stop.')
-                        ]
-                    )
-                    if (userSelection == 'Abort') {
-                        echo "⛔ User selected Abort."
-                        currentBuild.result = 'ABORTED'
-                        error("Build stopped by user.")
-                    } else {
-                        echo "✅ User selected Apply. Proceeding..."
-                    }
-                }
+                input message: "Confirm the action?", ok: "Confirm"
             }
         }
 	
