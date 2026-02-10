@@ -35,36 +35,41 @@ pipeline {
             }
             steps {
                 script {
-                    // 1. Get the User ID safely (Requires 'Build User Vars' plugin, or falls back to 'Jenkins User')
-                    def currentUser = "Jenkins User"
+                    def userDecision = null
+                    def promptMessage = "🚀 PROD DEPLOYMENT GATE"
+                    def currentUser = "Unknown User" // Fallback default
+
+                    // 1. FETCH THE REAL USER
+                    // We wrap this in a try-catch block so the build doesn't crash 
+                    // if the plugin is missing or if the build was triggered by a Timer/SCM.
                     try {
                         wrap([$class: 'BuildUser']) {
+                            // This plugin injects the 'BUILD_USER_ID' variable
                             currentUser = env.BUILD_USER_ID
+                            // You can also use env.BUILD_USER (Full Name) or env.BUILD_USER_EMAIL
                         }
                     } catch (Exception e) {
-                        // Plugin not installed or triggered by timer; ignore
+                        echo "⚠️ Could not detect user. Is 'Build User Vars Plugin' installed?"
+                        currentUser = "System/Timer"
                     }
 
-                    // 2. The Input Form
-                    // We catch the "System Abort" (the gray button) just in case, but we encourage using the Form.
-                    try {
+                    // 2. The Validation Loop
+                    waitUntil {
                         def userInput = input(
                             id: 'ProdDeployGate', 
-                            message: "🚀 PROD DEPLOYMENT GATE", 
-                            ok: "Confirm Decision", // This button submits the form (Approve OR Abort)
+                            message: promptMessage, 
+                            ok: "Confirm Decision", 
                             parameters: [
-                                // requirement 5: Show the user
+                                // Show the detected user here
                                 string(name: 'DISPLAY_USER', 
                                        defaultValue: currentUser, 
                                        description: 'User authorizing this action (Read Only)', 
                                        trim: true),
                                 
-                                // requirement 1 & 2: No Dropdown. Use Checkbox for "Abort" logic.
                                 booleanParam(name: 'ABORT_BUILD', 
                                              defaultValue: false, 
-                                             description: '🔴 Check this box if you want to ABORT/REJECT the build.'),
+                                             description: '🔴 Check this box to ABORT/REJECT the build.'),
                                 
-                                // requirement 3: Reason Text Box
                                 string(name: 'REASON', 
                                        defaultValue: '', 
                                        description: 'Reason for decision (MANDATORY if Abort is checked)', 
@@ -72,38 +77,31 @@ pipeline {
                             ]
                         )
 
-                        // 3. Validation Logic
-                        
-                        // Scenario: User checked "Abort"
+                        // 3. Logic Check
                         if (userInput['ABORT_BUILD'] == true) {
-                            def reason = userInput['REASON']
-                            
-                            // Check if reason is empty or just spaces
-                            if (reason == null || reason.trim() == "") {
-                                error("❌ You checked 'Abort' but did not provide a reason! Restart the build and try again.")
+                            if (!userInput['REASON']?.trim()) {
+                                promptMessage = "⚠️ ERROR: You checked 'Abort' but provided no reason!\n\nUser detected: ${currentUser}\nPlease provide a reason."
+                                return false // Restart Loop
+                            } else {
+                                userDecision = userInput
+                                return true // Exit Loop
                             }
-                            
-                            // Valid reason provided -> Abort Gracefully
-                            echo "⛔ Build explicitly aborted by ${userInput['DISPLAY_USER']}."
-                            echo "📝 Reason: ${reason}"
-                            currentBuild.result = 'ABORTED'
-                            error("Aborted by user: ${reason}")
+                        } else {
+                            userDecision = userInput
+                            return true // Exit Loop
                         }
-                        
-                        // Scenario: User did NOT check "Abort" (Approval)
-                        // Requirement 4: "if I don't give the reason but hit Apply... build should move on"
-                        else {
-                            echo "✅ Deployment Approved by ${userInput['DISPLAY_USER']}."
-                            if (userInput['REASON']?.trim()) {
-                                echo "📝 Note: ${userInput['REASON']}"
-                            }
-                        }
+                    }
 
-                    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-                        // This handles the case if they click the tiny gray 'Abort' button
-                        echo "⚠️ User clicked the system Abort button. No reason could be captured."
+                    // 4. Execution Logic
+                    if (userDecision['ABORT_BUILD'] == true) {
+                        echo "⛔ Build explicitly aborted by ${userDecision['DISPLAY_USER']}."
                         currentBuild.result = 'ABORTED'
-                        error("System Abort triggered")
+                        error("Aborted by user: ${userDecision['REASON']}")
+                    } else {
+                        echo "✅ Deployment Approved by ${userDecision['DISPLAY_USER']}."
+                        if (userDecision['REASON']?.trim()) {
+                            echo "📝 Note: ${userDecision['REASON']}"
+                        }
                     }
                 }
             }
