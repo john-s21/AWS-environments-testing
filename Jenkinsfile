@@ -36,31 +36,22 @@ pipeline {
             steps {
                 script {
                     def userDecision = null
-                    def promptMessage = "🚀 PROD DEPLOYMENT GATE"
-                    def currentUser = "Unknown User" // Fallback default
-
-                    // 1. FETCH THE REAL USER
-                    // We wrap this in a try-catch block so the build doesn't crash 
-                    // if the plugin is missing or if the build was triggered by a Timer/SCM.
+                    def promptMessage = "🚀 PROD DEPLOYMENT GATE" // Initial message
+                    
+                    // 1. Get User ID (Safe fallback if plugin is missing)
+                    def currentUser = "Unknown"
                     try {
-                        wrap([$class: 'BuildUser']) {
-                            // This plugin injects the 'BUILD_USER_ID' variable
-                            currentUser = env.BUILD_USER_ID
-                            // You can also use env.BUILD_USER (Full Name) or env.BUILD_USER_EMAIL
-                        }
-                    } catch (Exception e) {
-                        echo "⚠️ Could not detect user. Is 'Build User Vars Plugin' installed?"
-                        currentUser = "System/Timer"
-                    }
+                        wrap([$class: 'BuildUser']) { currentUser = env.BUILD_USER_ID }
+                    } catch (Exception e) { currentUser = "System" }
 
                     // 2. The Validation Loop
+                    // This creates the "Pause as long as needed" behavior
                     waitUntil {
                         def userInput = input(
                             id: 'ProdDeployGate', 
                             message: promptMessage, 
-                            ok: "Confirm Decision", 
+                            ok: "Confirm Decision", // The ONLY button you need to click
                             parameters: [
-                                // Show the detected user here
                                 string(name: 'DISPLAY_USER', 
                                        defaultValue: currentUser, 
                                        description: 'User authorizing this action (Read Only)', 
@@ -68,40 +59,43 @@ pipeline {
                                 
                                 booleanParam(name: 'ABORT_BUILD', 
                                              defaultValue: false, 
-                                             description: '🔴 Check this box to ABORT/REJECT the build.'),
+                                             description: '🔴 Check this box to ABORT/STOP the build.'),
                                 
                                 string(name: 'REASON', 
                                        defaultValue: '', 
-                                       description: 'Reason for decision (MANDATORY if Abort is checked)', 
+                                       description: 'Reason for decision (REQUIRED if Abort is checked)', 
                                        trim: true)
                             ]
                         )
 
-                        // 3. Logic Check
+                        // 3. Logic: Check the inputs
                         if (userInput['ABORT_BUILD'] == true) {
+                            // Case: User wants to Abort
                             if (!userInput['REASON']?.trim()) {
-                                promptMessage = "⚠️ ERROR: You checked 'Abort' but provided no reason!\n\nUser detected: ${currentUser}\nPlease provide a reason."
-                                return false // Restart Loop
+                                // ERROR: No reason provided.
+                                // We update the message and return 'false' to RE-OPEN the prompt immediately.
+                                promptMessage = "⚠️ STOP! You checked 'ABORT' but gave no reason.\nPlease enter a reason and click Confirm again."
+                                return false 
                             } else {
+                                // VALID: Reason provided. Exit loop.
                                 userDecision = userInput
-                                return true // Exit Loop
+                                return true 
                             }
                         } else {
+                            // Case: User wants to Deploy (Checkbox empty)
+                            // We don't need a reason. Exit loop.
                             userDecision = userInput
-                            return true // Exit Loop
+                            return true 
                         }
                     }
 
-                    // 4. Execution Logic
+                    // 4. Execution (Happens only after valid input)
                     if (userDecision['ABORT_BUILD'] == true) {
                         echo "⛔ Build explicitly aborted by ${userDecision['DISPLAY_USER']}."
                         currentBuild.result = 'ABORTED'
                         error("Aborted by user: ${userDecision['REASON']}")
                     } else {
                         echo "✅ Deployment Approved by ${userDecision['DISPLAY_USER']}."
-                        if (userDecision['REASON']?.trim()) {
-                            echo "📝 Note: ${userDecision['REASON']}"
-                        }
                     }
                 }
             }
