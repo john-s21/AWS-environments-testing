@@ -1,7 +1,7 @@
 # Multi-Environment AWS Infrastructure (Jenkins Pipeline)
 
-## This project manages Infrastructure-as-Code (IaC) for Dev, SIT, and Prod environments.
-## The deployment logic is fully encapsulated within a parameterized Jenkins pipeline, ensuring consistent state management and security guardrails.
+### This project manages Infrastructure-as-Code (IaC) for Dev, SIT, and Prod environments.
+### The deployment logic is fully encapsulated within a parameterized Jenkins pipeline, ensuring consistent state management and security guardrails.
 
 🏗 Architecture Overview
 
@@ -10,7 +10,8 @@
 * Security: AWS Cross-Account assume_role for all deployments.
 
 🚀 Jenkins Pipeline Workflow:
-The pipeline is designed to be interactive and "smart" about how it handles production gates and destruction logs.
+
+      > The pipeline is designed to be interactive and "smart" about how it handles production gates and destruction logs.
 
 1. Build Parameters
    When triggering a Build with Parameters, you must select:
@@ -40,6 +41,7 @@ The pipeline is designed to be interactive and "smart" about how it handles prod
    Stage 4: Execution (Smart Apply/Destroy) 🧠
 
      The pipeline executes the changes and intelligently parses the output.
+   
       * On Apply:   Auto-approves the creation of resources & Validates success via exit code.
        * On Destroy:
            - Captures the Terraform logs into a variable
@@ -51,7 +53,8 @@ The pipeline is designed to be interactive and "smart" about how it handles prod
   <img width="666" height="395" alt="image" src="https://github.com/user-attachments/assets/a2dcdf93-1a7e-4dc9-be6e-77e08f1fde6f" />
 
 🔌 Prerequisites (Jenkins)
-      To run this pipeline successfully, the Jenkins server requires:
+
+      > To run this pipeline successfully, the Jenkins server requires:
 
    1. Plugins:
        * Build User Vars Plugin: Required to detect the logged-in user for the Prod Gate.
