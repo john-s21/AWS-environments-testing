@@ -38,16 +38,18 @@ pipeline {
             }
         }
 	
-        stage('Terraform Apply/Destroy') {
-            when {
-                not { expression { params.ACTION == 'plan' } }
-            }
+        stage('Terraform Action') {
             steps {
                 script {
-                    if (params.ACTION == 'destroy') {
-                        // DESTROY LOGIC
-                        def destroyLog = sh(
-                            script: "terraform destroy -var-file=${TFVARS_FILE} -auto-approve", 
+                    if (params.ACTION == 'apply') {
+                        sh "terraform apply -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve"
+			echo "Verifying S3 Buckets in AWS..."
+                        sh "aws s3 ls | grep ${params.ENVIRONMENT} || true"
+			echo "If you see the bucket name above, the deployment was a success!"
+                    } 
+                    else if (params.ACTION == 'destroy') { 
+			def destroyLog = sh(
+                            script: "terraform destroy -var-file=tfvars/${params.ENVIRONMENT}.tfvars -auto-approve", 
                             returnStdout: true
                         ).trim()
 
@@ -58,15 +60,9 @@ pipeline {
                         } else {
                             echo "🗑️ SUCCESS: The bucket ${params.ENVIRONMENT} was destroyed!"
                         }
-                    } 
-                    else if (params.ACTION == 'apply') {
-                        // APPLY LOGIC (Fixed)
-                        sh "terraform apply -var-file=${TFVARS_FILE} -auto-approve"
-                        echo "✅ Deployment Successful!"
                     }
                 }
             }
-        }
-	
+        }	
     }
 }
