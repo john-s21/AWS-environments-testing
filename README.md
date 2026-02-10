@@ -10,7 +10,6 @@
 * Security: AWS Cross-Account assume_role for all deployments.
 
 🚀 Jenkins Pipeline Workflow:
-
       > The pipeline is designed to be interactive and "smart" about how it handles production gates and destruction logs.
 
 1. Build Parameters
@@ -53,7 +52,6 @@
   <img width="666" height="395" alt="image" src="https://github.com/user-attachments/assets/a2dcdf93-1a7e-4dc9-be6e-77e08f1fde6f" />
 
 🔌 Prerequisites (Jenkins)
-
       > To run this pipeline successfully, the Jenkins server requires:
 
    1. Plugins:
