@@ -1,13 +1,13 @@
-#Multi-Environment AWS Infrastructure (Jenkins Pipeline)
+# Multi-Environment AWS Infrastructure (Jenkins Pipeline)
 
-##This project manages Infrastructure-as-Code (IaC) for Dev, SIT, and Prod environments.
-##The deployment logic is fully encapsulated within a parameterized Jenkins pipeline, ensuring consistent state management and security guardrails.
+## This project manages Infrastructure-as-Code (IaC) for Dev, SIT, and Prod environments.
+## The deployment logic is fully encapsulated within a parameterized Jenkins pipeline, ensuring consistent state management and security guardrails.
 
 🏗 Architecture Overview
 
-> Environments: Dev, SIT, Prod.
-> State Management: S3 Backend with dynamic reconfiguration.
-> Security: AWS Cross-Account assume_role for all deployments.
+* Environments: Dev, SIT, Prod.
+* State Management: S3 Backend with dynamic reconfiguration.
+* Security: AWS Cross-Account assume_role for all deployments.
 
 🚀 Jenkins Pipeline Workflow:
 The pipeline is designed to be interactive and "smart" about how it handles production gates and destruction logs.
@@ -40,11 +40,11 @@ The pipeline is designed to be interactive and "smart" about how it handles prod
    Stage 4: Execution (Smart Apply/Destroy) 🧠
 
      The pipeline executes the changes and intelligently parses the output.
-         * On Apply:   Auto-approves the creation of resources & Validates success via exit code.
-         * On Destroy:
-             - Captures the Terraform logs into a variable
-             - If logs contain "Resources: 0 destroyed", it prints: ⚠️ Info: No resources needed to be destroyed (Bucket didn't exist).
-             - If resources were removed, it prints: 🗑️ SUCCESS: The bucket was destroyed!
+      * On Apply:   Auto-approves the creation of resources & Validates success via exit code.
+       * On Destroy:
+           - Captures the Terraform logs into a variable
+           - If logs contain "Resources: 0 destroyed", it prints: ⚠️ Info: No resources needed to be destroyed (Bucket didn't exist).
+           - If resources were removed, it prints: 🗑️ SUCCESS: The bucket was destroyed!
 
 📂 Project Structure
 
