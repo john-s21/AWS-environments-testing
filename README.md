@@ -19,26 +19,26 @@ The pipeline is designed to be interactive and "smart" about how it handles prod
      
 2. Pipeline Logic & Stages
    Stage 1: User Detection 👤
-     > Plugin: Uses the Build User Vars Plugin.
-     > Logic: Automatically detects the user triggering the build (e.g., admin, john.doe).
-     > Fallback: If triggered by a timer or webhook, defaults to "System".
+     * Plugin: Uses the Build User Vars Plugin.
+     * Logic: Automatically detects the user triggering the build (e.g., admin, john.doe).
+     * Fallback: If triggered by a timer or webhook, defaults to "System".
    Stage 2: Initialization & Plan
-     > Dynamically configures the S3 backend for the selected ENVIRONMENT.
-     > Generates a speculative plan using the environment-specific .tfvars file.
+     * Dynamically configures the S3 backend for the selected ENVIRONMENT.
+     * Generates a speculative plan using the environment-specific .tfvars file.
    Stage 3: Production Gate (Prod Only) 🛡️
      This stage runs only if ENVIRONMENT is Prod and the action is Apply or Destroy.
-     1.  Prompt: A blocking input box appears: "Confirm the action?".
-     2.  User Info: Displays the detected username authorizing the change.
-     3.  Action:
-         > Click "Confirm": The pipeline proceeds to execute the changes.
-         > Click "Abort": The pipeline stops immediately (Status: ABORTED).
+     *  Prompt: A blocking input box appears: "Confirm the action?".
+     *  User Info: Displays the detected username authorizing the change.
+     *  Action:
+         - Click "Confirm": The pipeline proceeds to execute the changes.
+         - Click "Abort": The pipeline stops immediately (Status: ABORTED).
    Stage 4: Execution (Smart Apply/Destroy) 🧠
      The pipeline executes the changes and intelligently parses the output.
-         1. On Apply:   Auto-approves the creation of resources & Validates success via exit code.
-         2. On Destroy:
-             > Captures the Terraform logs into a variable
-             > If logs contain "Resources: 0 destroyed", it prints: ⚠️ Info: No resources needed to be destroyed (Bucket didn't exist).
-             > If resources were removed, it prints: 🗑️ SUCCESS: The bucket was destroyed!
+         * On Apply:   Auto-approves the creation of resources & Validates success via exit code.
+         * On Destroy:
+             - Captures the Terraform logs into a variable
+             - If logs contain "Resources: 0 destroyed", it prints: ⚠️ Info: No resources needed to be destroyed (Bucket didn't exist).
+             - If resources were removed, it prints: 🗑️ SUCCESS: The bucket was destroyed!
 
 📂 Project Structure
 
@@ -48,14 +48,14 @@ The pipeline is designed to be interactive and "smart" about how it handles prod
       To run this pipeline successfully, the Jenkins server requires:
 
    1. Plugins:
-          > Build User Vars Plugin: Required to detect the logged-in user for the Prod Gate.
-          > Pipeline Utility Steps: For advanced file/log operations.
+          * Build User Vars Plugin: Required to detect the logged-in user for the Prod Gate.
+          * Pipeline Utility Steps: For advanced file/log operations.
 
    2. Credentials:
-          > AWS Credentials capable of assuming the target IAM roles.
+          * AWS Credentials capable of assuming the target IAM roles.
 
   3. Tools:
-          > Terraform v1.0+ installed on the agent.
-          > AWS CLI installed for verification steps.
+          * Terraform v1.0+ installed on the agent.
+          * AWS CLI installed for verification steps.
 
      
